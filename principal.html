@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — PTO Fund Ledger</title>
+<title>Dashboard — Sistem Kutipan Yuran PIBG SMK Teluk Bayu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -13,8 +13,8 @@
 
 <nav class="topnav">
   <div class="brand">
-    <div class="mark">L</div>
-    <span class="word">PTO Fund Ledger</span>
+    <div class="mark"><img src="img/pibg-logo.png" alt="Logo PIBG SMK Teluk Bayu"></div>
+    <span class="word">Sistem Kutipan Yuran PIBG SMK Teluk Bayu</span>
     <span class="ctx">· Principal dashboard</span>
   </div>
   <div class="topnav-right">
@@ -24,18 +24,63 @@
 </nav>
 
 <div class="shell">
-  <div class="page-head">
-    <div class="eyebrow">Principal view</div>
-    <h1>Fund dashboard</h1>
-    <div class="field" style="max-width:220px; margin-top:10px;">
-      <label>Year</label>
-      <select id="yearSelect"></select>
+
+  <div class="dash-header">
+    <div class="dash-header-left">
+      <div class="dash-eyebrow-row">
+        <div class="dash-crest-group">
+          <img class="dash-crest-school" src="img/lencana-sekolah.png" alt="Lencana SMK Teluk Bayu">
+          <div class="dash-crest"><img src="img/pibg-logo.png" alt="Logo PIBG SMK Teluk Bayu"></div>
+        </div>
+        <div>
+          <div class="eyebrow" id="dashDate">Principal view</div>
+          <h1>Fund dashboard</h1>
+        </div>
+      </div>
+      <div class="dash-sub">School-wide PIBG fee collection overview, by class and by year. Figures update live as teachers record payments.</div>
+    </div>
+    <div class="dash-header-right">
+      <div class="field" style="max-width:200px; margin-bottom:0;">
+        <label>Year</label>
+        <select id="yearSelect" class="select-year"></select>
+      </div>
+      <button class="btn btn-primary" id="printReportBtn">Print report</button>
     </div>
   </div>
 
-  <div class="stats" id="statsRow"></div>
-  <div id="classCards"></div>
+  <div class="kpi-grid" id="statsRow"></div>
+
+  <div class="chart-row">
+    <div class="card chart-card">
+      <div class="card-head"><h3>Collection by class</h3><span class="tiny muted">Ranked, highest first</span></div>
+      <div class="bar-list" id="barChart"></div>
+    </div>
+    <div class="card chart-card">
+      <div class="card-head"><h3>School-wide status</h3></div>
+      <div class="donut-wrap" id="donutChart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Classes</h3>
+      <span class="tiny muted" id="classCount"></span>
+    </div>
+    <div class="dash-table-wrap" id="classTable"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Moneyboxes</h3>
+      <span class="tiny muted">Remaining balance, this year</span>
+    </div>
+    <div class="bar-list" id="moneyboxChart"></div>
+  </div>
+
 </div>
+
+<!-- printable letterhead report, populated at print time -->
+<div id="reportArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
