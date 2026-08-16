@@ -123,9 +123,12 @@ label{font-size:12px; color:var(--ink-soft); font-weight:600; display:block; mar
 .login-card{
   width:100%; max-width:400px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
   padding:34px 32px; box-shadow:0 1px 0 var(--line), 0 24px 50px -28px rgba(28,43,34,.35);
+  text-align:center;
 }
-.login-mark{width:46px; height:46px; border-radius:50%; border:2px solid var(--green); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:600; margin-bottom:14px; color:var(--green);}
+.login-logos{display:flex; justify-content:center; align-items:center; gap:16px; margin-bottom:18px;}
+.login-logos img{height:68px; width:auto; display:block;}
 .login-card h1{font-size:23px;}
+.login-card .field{text-align:left;}
 .login-err{color:var(--clay); font-size:13px; margin-top:10px; min-height:16px;}
 
 /* ---------- search ---------- */

@@ -8,6 +8,7 @@ let CLASSES = [];
 let STAFF = [];
 let MONEYBOXES = []; // [{id, label}]
 let SELECTED_LEDGER_CLASS_ID = 'all';
+let STAFF_SORT = 'name';
 
 requireRole('admin', async (user, profile)=>{
   document.getElementById('whoami').innerHTML = `Signed in as <b>${esc(profile.displayName || profile.email)}</b>`;
@@ -495,10 +496,27 @@ async function renderLedger(yearId, classId, precomputedStats){
     `;
   }).join('') || `<div class="empty-note">No moneyboxes yet — add one above.</div>`;
 
+  const totalWithdrawn = !filteredToClass
+    ? MONEYBOXES.reduce((sum,b)=> sum + ((ledgerMap[b.id] && ledgerMap[b.id].withdrawn) || 0), 0)
+    : 0;
+  const feeAvailable = collectedTotal - totalWithdrawn;
+
   body.innerHTML = debtBanner + boxesHtml + `
-    <div class="stat" style="max-width:280px;">
-      <div class="num">${fmtMoney(collectedTotal)}</div>
-      <div class="lbl">${filteredToClass ? 'Fees collected (this class)' : 'Current total fees collected'}</div>
+    <div class="stats" style="margin-top:0;">
+      <div class="stat" style="max-width:280px;">
+        <div class="num">${fmtMoney(collectedTotal)}</div>
+        <div class="lbl">${filteredToClass ? 'Fees collected (this class)' : 'Current total fees collected'}</div>
+      </div>
+      <div class="stat" style="max-width:280px;">
+        <div class="num" style="${debtTotal>0?'color:var(--clay);':''}">${fmtMoney(debtTotal)}</div>
+        <div class="lbl">${filteredToClass ? 'Fees remaining (this class)' : 'Fees remaining to collect'}</div>
+      </div>
+      ${!filteredToClass ? `
+      <div class="stat" style="max-width:280px;">
+        <div class="num" style="${feeAvailable<0?'color:var(--clay);':''}">${fmtMoney(feeAvailable)}</div>
+        <div class="lbl">Fee available (collected − withdrawals)</div>
+      </div>
+      ` : ''}
     </div>
   `;
 
@@ -560,6 +578,23 @@ async function renderLedger(yearId, classId, precomputedStats){
 }
 
 /* ================= STAFF ================= */
+function sortStaffList(list){
+  const copy = [...list];
+  const nameOf = s => (s.displayName || s.email || '').toLowerCase();
+  if(STAFF_SORT === 'email'){
+    copy.sort((a,b)=> (a.email||'').toLowerCase().localeCompare((b.email||'').toLowerCase()));
+  }else if(STAFF_SORT === 'role'){
+    const order = { admin:0, principal:1, teacher:2 };
+    copy.sort((a,b)=> (order[a.role]??9)-(order[b.role]??9) || nameOf(a).localeCompare(nameOf(b)));
+  }else if(STAFF_SORT === 'unassigned'){
+    const hasAssignment = s => s.role==='teacher' && s.assignments && Object.keys(s.assignments).length>0;
+    copy.sort((a,b)=> (hasAssignment(a)?1:0) - (hasAssignment(b)?1:0) || nameOf(a).localeCompare(nameOf(b)));
+  }else{
+    copy.sort((a,b)=> nameOf(a).localeCompare(nameOf(b)));
+  }
+  return copy;
+}
+
 async function refreshStaff(){
   const snap = await db.collection('users').orderBy('email').get();
   STAFF = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -616,13 +651,21 @@ async function renderStaff(){
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom:14px;">All accounts</h3>
-      <p class="tiny muted" style="margin-top:-8px; margin-bottom:14px;">Assign a year and class to each teacher using the 📋 icon below.</p>
+      <div class="card-head" style="margin-bottom:4px;">
+        <h3>All accounts</h3>
+        <select id="staffSortSelect">
+          <option value="name" ${STAFF_SORT==='name'?'selected':''}>Sort: Name (A–Z)</option>
+          <option value="email" ${STAFF_SORT==='email'?'selected':''}>Sort: Email (A–Z)</option>
+          <option value="role" ${STAFF_SORT==='role'?'selected':''}>Sort: Role</option>
+          <option value="unassigned" ${STAFF_SORT==='unassigned'?'selected':''}>Sort: Unassigned first</option>
+        </select>
+      </div>
+      <p class="tiny muted" style="margin-bottom:14px;">Assign a year and class to each teacher using the 📋 icon below.</p>
       ${STAFF.length ? `
         <table class="admin-table">
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Class &amp; year</th><th></th></tr></thead>
           <tbody>
-            ${STAFF.map(s=>{
+            ${sortStaffList(STAFF).map(s=>{
               return `
                 <tr data-id="${s.id}">
                   <td>${esc(s.displayName || '—')}</td>
@@ -644,6 +687,8 @@ async function renderStaff(){
   `;
 
   const roleSelect = document.getElementById('newStaffRole');
+  const sortSelect = document.getElementById('staffSortSelect');
+  if(sortSelect) sortSelect.addEventListener('change', (e)=>{ STAFF_SORT = e.target.value; renderStaff(); });
 
   document.getElementById('addStaffBtn').onclick = async ()=>{
     const displayName = document.getElementById('newStaffName').value.trim();
@@ -701,17 +746,20 @@ function openAssignModal(staff){
   async function refresh(){
     const list = await loadClassesForYear(yearSel.value);
     const current = staff.assignments && staff.assignments[yearSel.value];
-    classSel.innerHTML = list.length ? list.map(c=>`<option value="${c.id}" ${c.id===current?'selected':''}>${esc(c.name)}</option>`).join('') : '<option value="">No classes in this year</option>';
+    const unassignedOpt = `<option value="" ${!current?'selected':''}>— Unassigned —</option>`;
+    classSel.innerHTML = unassignedOpt + list.map(c=>`<option value="${c.id}" ${c.id===current?'selected':''}>${esc(c.name)}</option>`).join('');
   }
   yearSel.addEventListener('change', refresh);
   refresh();
   document.getElementById('assignSaveBtn').onclick = async ()=>{
     const yearId = yearSel.value;
     const classId = classSel.value;
-    if(!classId){ toast('No class to assign in that year.'); return; }
     try{
-      await db.collection('users').doc(staff.id).update({ [`assignments.${yearId}`]: classId });
-      toast('Assignment saved.');
+      const update = classId
+        ? { [`assignments.${yearId}`]: classId }
+        : { [`assignments.${yearId}`]: firebase.firestore.FieldValue.delete() };
+      await db.collection('users').doc(staff.id).update(update);
+      toast(classId ? 'Assignment saved.' : 'Unassigned for that year.');
       closeModal();
       await refreshStaff();
       renderStaff();
