@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function myProfile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function myRole() { return myProfile().role; }
+    function myClassFor(yearId) {
+      return ('assignments' in myProfile()) ? myProfile().assignments[yearId] : null;
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && myRole() == 'admin';
+    }
+
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && myRole() == 'admin';
+    }
+
+    match /years/{yearId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && myRole() == 'admin';
+
+      match /boxLedger/{boxId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && myRole() == 'admin';
+      }
+
+      match /classes/{classId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && myRole() == 'admin';
+
+        match /students/{studentId} {
+          allow read: if isSignedIn();
+          allow write: if isSignedIn() && (
+            myRole() == 'admin' ||
+            (myRole() == 'teacher' && myClassFor(yearId) == classId)
+          );
+        }
+      }
+    }
+  }
+}
